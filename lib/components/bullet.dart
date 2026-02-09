@@ -6,19 +6,19 @@ import '../river_raid_game.dart';
 
 class Bullet extends PositionComponent with HasGameRef<RiverRaidGame>, CollisionCallbacks {
   static const double speed = 500.0;
-  static const double width = 4.0;
-  static const double height = 15.0;
+  static const double bulletWidth = 4.0;
+  static const double bulletHeight = 15.0;
   
   final Paint _paint = Paint()..color = Colors.yellow;
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    size = Vector2(width, height);
+    size = Vector2(bulletWidth, bulletHeight);
     anchor = Anchor.center;
     
     // Add collision detection
-    add(RectangleHitbox(size: Vector2(width, height)));
+    add(RectangleHitbox(size: Vector2(bulletWidth, bulletHeight)));
   }
 
   @override
@@ -38,7 +38,11 @@ class Bullet extends PositionComponent with HasGameRef<RiverRaidGame>, Collision
   void render(Canvas canvas) {
     super.render(canvas);
     canvas.drawRect(
-      Rect.fromCenter(center: Offset.zero, width: width, height: height),
+      Rect.fromCenter(
+        center: Offset.zero,
+        width: bulletWidth,
+        height: bulletHeight,
+      ),
       _paint,
     );
   }

@@ -9,26 +9,43 @@ import 'components/player.dart';
 import 'components/enemy.dart';
 import 'components/terrain.dart';
 import 'components/fuel_depot.dart';
+import 'components/bridge.dart';
+import 'components/bullet.dart';
+import 'top_score_store.dart';
+
+enum GamePhase {
+  start,
+  running,
+  gameOver,
+}
 
 class RiverRaidGame extends FlameGame
-    with KeyboardEvents, TapDetector, HasCollisionDetection {
+  with KeyboardEvents, TapCallbacks, HasCollisionDetection {
   late Player player;
   final Random random = Random();
   
   final ValueNotifier<int> scoreNotifier = ValueNotifier<int>(0);
   final ValueNotifier<double> fuelNotifier = ValueNotifier<double>(100);
-  final ValueNotifier<bool> gameOverNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<int> livesNotifier = ValueNotifier<int>(3);
+  final TopScoreStore topScoreStore = TopScoreStore();
+  late final ValueNotifier<int> topScoreNotifier =
+      topScoreStore.topScoreNotifier;
+  final ValueNotifier<GamePhase> gamePhaseNotifier =
+      ValueNotifier<GamePhase>(GamePhase.start);
   
   double gameSpeed = 100;
   double enemySpawnTimer = 0;
   double fuelDepotSpawnTimer = 0;
   double terrainSpawnTimer = 0;
+  double bridgeSpawnTimer = 0;
   
   static const double enemySpawnInterval = 2.0;
   static const double fuelDepotSpawnInterval = 8.0;
   static const double terrainSpawnInterval = 0.3;
+  static const double bridgeSpawnInterval = 12.0;
   
-  bool _isGameOver = false;
+  double _hitInvulnerableTimer = 0;
+  int _nextLifeScore = 10000;
   
   @override
   Color backgroundColor() => const Color(0xFF1565C0);
@@ -47,20 +64,26 @@ class RiverRaidGame extends FlameGame
     for (int i = 0; i < 10; i++) {
       _spawnTerrain();
     }
+
+    pauseEngine();
   }
 
   @override
   void update(double dt) {
     super.update(dt);
     
-    if (_isGameOver) return;
+    if (gamePhaseNotifier.value != GamePhase.running) return;
+
+    if (_hitInvulnerableTimer > 0) {
+      _hitInvulnerableTimer = (_hitInvulnerableTimer - dt).clamp(0, 10);
+    }
     
     // Update fuel
     player.fuel -= dt * 5; // Fuel consumption
     fuelNotifier.value = player.fuel;
     
     if (player.fuel <= 0) {
-      gameOver();
+      _loseLife();
       return;
     }
     
@@ -84,16 +107,22 @@ class RiverRaidGame extends FlameGame
       terrainSpawnTimer = 0;
       _spawnTerrain();
     }
+
+    bridgeSpawnTimer += dt;
+    if (bridgeSpawnTimer >= bridgeSpawnInterval) {
+      bridgeSpawnTimer = 0;
+      if (random.nextDouble() > 0.4) {
+        _spawnBridge();
+      }
+    }
     
     // Increase difficulty over time
     gameSpeed += dt * 2;
   }
 
   void _spawnEnemy() {
-    final leftSide = random.nextBool();
-    final x = leftSide ? size.x * 0.2 : size.x * 0.8;
-    
-    final enemy = Enemy(gameSpeed: gameSpeed)
+    final x = size.x * (0.2 + random.nextDouble() * 0.6);
+    final enemy = Enemy.random(gameSpeed: gameSpeed, random: random)
       ..position = Vector2(x, -50);
     add(enemy);
   }
@@ -126,8 +155,19 @@ class RiverRaidGame extends FlameGame
     add(rightTerrain);
   }
 
+  void _spawnBridge() {
+    final bridge = Bridge(gameSpeed: gameSpeed, width: size.x * 0.65)
+      ..position = Vector2(size.x * 0.175, -60);
+    add(bridge);
+  }
+
   void addScore(int points) {
     scoreNotifier.value += points;
+    topScoreStore.registerScore(scoreNotifier.value);
+    while (scoreNotifier.value >= _nextLifeScore) {
+      livesNotifier.value += 1;
+      _nextLifeScore += 10000;
+    }
   }
 
   void refuel(double amount) {
@@ -135,25 +175,12 @@ class RiverRaidGame extends FlameGame
     fuelNotifier.value = player.fuel;
   }
 
-  void gameOver() {
-    if (_isGameOver) return;
-    _isGameOver = true;
-    gameOverNotifier.value = true;
+  void _triggerGameOver() {
+    gamePhaseNotifier.value = GamePhase.gameOver;
     pauseEngine();
   }
 
-  void reset() {
-    _isGameOver = false;
-    gameOverNotifier.value = false;
-    scoreNotifier.value = 0;
-    player.fuel = 100;
-    fuelNotifier.value = 100;
-    gameSpeed = 100;
-    enemySpawnTimer = 0;
-    fuelDepotSpawnTimer = 0;
-    terrainSpawnTimer = 0;
-    
-    // Remove all game objects except player
+  void _resetObjects() {
     for (final enemy in children.whereType<Enemy>()) {
       enemy.removeFromParent();
     }
@@ -163,27 +190,118 @@ class RiverRaidGame extends FlameGame
     for (final terrain in children.whereType<Terrain>()) {
       terrain.removeFromParent();
     }
-    
-    // Reset player position
+    for (final bridge in children.whereType<Bridge>()) {
+      bridge.removeFromParent();
+    }
+    for (final bullet in children.whereType<Bullet>()) {
+      bullet.removeFromParent();
+    }
+  }
+
+  void _resetAfterHit() {
+    player.fuel = 100;
+    fuelNotifier.value = 100;
     player.position = Vector2(size.x / 2, size.y * 0.8);
-    
+    _resetObjects();
+    for (int i = 0; i < 10; i++) {
+      _spawnTerrain();
+    }
+  }
+
+  void _loseLife() {
+    if (gamePhaseNotifier.value != GamePhase.running) return;
+    if (_hitInvulnerableTimer > 0) return;
+
+    livesNotifier.value -= 1;
+    if (livesNotifier.value <= 0) {
+      _triggerGameOver();
+      return;
+    }
+
+    _hitInvulnerableTimer = 1.0;
+    _resetAfterHit();
+  }
+
+  void startGame() {
+    if (gamePhaseNotifier.value == GamePhase.running) return;
+    reset();
+  }
+
+  void reset() {
+    scoreNotifier.value = 0;
+    _nextLifeScore = 10000;
+    livesNotifier.value = 3;
+    player.fuel = 100;
+    fuelNotifier.value = 100;
+    gameSpeed = 100;
+    enemySpawnTimer = 0;
+    fuelDepotSpawnTimer = 0;
+    terrainSpawnTimer = 0;
+    bridgeSpawnTimer = 0;
+    _hitInvulnerableTimer = 0;
+
+    _resetObjects();
+
+    for (int i = 0; i < 10; i++) {
+      _spawnTerrain();
+    }
+
+    player.position = Vector2(size.x / 2, size.y * 0.8);
+
+    gamePhaseNotifier.value = GamePhase.running;
     resumeEngine();
+  }
+
+  void handlePlayerCollision(PositionComponent other) {
+    if (other is FuelDepot) {
+      refuel(50);
+      other.removeFromParent();
+      return;
+    }
+
+    if (other is Enemy || other is Terrain || other is Bridge) {
+      _loseLife();
+    }
   }
 
   @override
   KeyEventResult onKeyEvent(
-    RawKeyEvent event,
+    KeyEvent event,
     Set<LogicalKeyboardKey> keysPressed,
   ) {
-    if (_isGameOver) return KeyEventResult.ignored;
+    final phase = gamePhaseNotifier.value;
+
+    if (phase == GamePhase.start) {
+      if (keysPressed.contains(LogicalKeyboardKey.enter) ||
+          keysPressed.contains(LogicalKeyboardKey.space)) {
+        startGame();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
+
+    if (phase == GamePhase.gameOver) {
+      if (keysPressed.contains(LogicalKeyboardKey.enter) ||
+          keysPressed.contains(LogicalKeyboardKey.space)) {
+        reset();
+        return KeyEventResult.handled;
+      }
+      return KeyEventResult.ignored;
+    }
     
     final isLeft = keysPressed.contains(LogicalKeyboardKey.arrowLeft) ||
         keysPressed.contains(LogicalKeyboardKey.keyA);
     final isRight = keysPressed.contains(LogicalKeyboardKey.arrowRight) ||
         keysPressed.contains(LogicalKeyboardKey.keyD);
+    final isUp = keysPressed.contains(LogicalKeyboardKey.arrowUp) ||
+      keysPressed.contains(LogicalKeyboardKey.keyW);
+    final isDown = keysPressed.contains(LogicalKeyboardKey.arrowDown) ||
+      keysPressed.contains(LogicalKeyboardKey.keyS);
     
     player.moveLeft = isLeft;
     player.moveRight = isRight;
+    player.moveUp = isUp;
+    player.moveDown = isDown;
     
     if (keysPressed.contains(LogicalKeyboardKey.space)) {
       player.shoot();
@@ -193,11 +311,21 @@ class RiverRaidGame extends FlameGame
   }
 
   @override
-  void onTapDown(TapDownInfo info) {
-    if (_isGameOver) return;
+  void onTapDown(TapDownEvent event) {
+    final phase = gamePhaseNotifier.value;
+    if (phase == GamePhase.start) {
+      startGame();
+      return;
+    }
+    if (phase == GamePhase.gameOver) {
+      reset();
+      return;
+    }
     
-    final touchX = info.eventPosition.global.x;
+    final touchX = event.canvasPosition.x;
+    final touchY = event.canvasPosition.y;
     final playerX = player.position.x;
+    final playerY = player.position.y;
     
     if (touchX < playerX - 20) {
       player.moveLeft = true;
@@ -206,19 +334,31 @@ class RiverRaidGame extends FlameGame
       player.moveRight = true;
       player.moveLeft = false;
     }
+
+    if (touchY < playerY - 20) {
+      player.moveUp = true;
+      player.moveDown = false;
+    } else if (touchY > playerY + 20) {
+      player.moveDown = true;
+      player.moveUp = false;
+    }
     
     player.shoot();
   }
 
   @override
-  void onTapUp(TapUpInfo info) {
+  void onTapUp(TapUpEvent event) {
     player.moveLeft = false;
     player.moveRight = false;
+    player.moveUp = false;
+    player.moveDown = false;
   }
 
   @override
-  void onTapCancel() {
+  void onTapCancel(TapCancelEvent event) {
     player.moveLeft = false;
     player.moveRight = false;
+    player.moveUp = false;
+    player.moveDown = false;
   }
 }

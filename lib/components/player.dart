@@ -7,15 +7,18 @@ import 'bullet.dart';
 import 'enemy.dart';
 import 'fuel_depot.dart';
 import 'terrain.dart';
+import 'bridge.dart';
 
 class Player extends PositionComponent
     with HasGameRef<RiverRaidGame>, CollisionCallbacks {
   static const double speed = 300.0;
-  static const double size = 40.0;
+  static const double playerSize = 40.0;
   
   double fuel = 100.0;
   bool moveLeft = false;
   bool moveRight = false;
+  bool moveUp = false;
+  bool moveDown = false;
   
   double shootCooldown = 0;
   static const double shootInterval = 0.2;
@@ -25,12 +28,12 @@ class Player extends PositionComponent
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    width = size;
-    height = size;
+    width = playerSize;
+    height = playerSize;
     anchor = Anchor.center;
     
     // Add collision detection
-    add(RectangleHitbox(size: Vector2(size, size)));
+    add(RectangleHitbox(size: Vector2(playerSize, playerSize)));
   }
 
   @override
@@ -49,9 +52,22 @@ class Player extends PositionComponent
     if (moveRight) {
       position.x += speed * dt;
     }
+    if (moveUp) {
+      position.y -= speed * dt;
+    }
+    if (moveDown) {
+      position.y += speed * dt;
+    }
     
     // Keep player within bounds
-    position.x = position.x.clamp(size / 2, gameRef.size.x - size / 2);
+    position.x = position.x.clamp(
+      playerSize / 2,
+      gameRef.size.x - playerSize / 2,
+    );
+    position.y = position.y.clamp(
+      playerSize / 2,
+      gameRef.size.y - playerSize / 2,
+    );
   }
 
   @override
@@ -60,17 +76,17 @@ class Player extends PositionComponent
     
     // Draw player as a triangle (jet)
     final path = Path()
-      ..moveTo(0, -size / 2) // Top point
-      ..lineTo(-size / 3, size / 2) // Bottom left
-      ..lineTo(size / 3, size / 2) // Bottom right
+      ..moveTo(0, -playerSize / 2) // Top point
+      ..lineTo(-playerSize / 3, playerSize / 2) // Bottom left
+      ..lineTo(playerSize / 3, playerSize / 2) // Bottom right
       ..close();
     
     canvas.drawPath(path, _paint);
     
     // Draw wings
     final wingPaint = Paint()..color = Colors.lightGreen;
-    canvas.drawCircle(Offset(-size / 3, 0), size / 6, wingPaint);
-    canvas.drawCircle(Offset(size / 3, 0), size / 6, wingPaint);
+    canvas.drawCircle(Offset(-playerSize / 3, 0), playerSize / 6, wingPaint);
+    canvas.drawCircle(Offset(playerSize / 3, 0), playerSize / 6, wingPaint);
   }
 
   void shoot() {
@@ -90,16 +106,11 @@ class Player extends PositionComponent
   ) {
     super.onCollisionStart(intersectionPoints, other);
     
-    if (other is Enemy) {
-      // Hit by enemy - game over
-      gameRef.gameOver();
-    } else if (other is FuelDepot) {
-      // Refuel
-      gameRef.refuel(50);
-      other.removeFromParent();
-    } else if (other is Terrain) {
-      // Hit terrain - game over
-      gameRef.gameOver();
+    if (other is Enemy ||
+        other is FuelDepot ||
+        other is Terrain ||
+        other is Bridge) {
+      gameRef.handlePlayerCollision(other);
     }
   }
 }

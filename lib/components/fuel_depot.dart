@@ -7,8 +7,8 @@ import '../river_raid_game.dart';
 class FuelDepot extends PositionComponent
     with HasGameRef<RiverRaidGame>, CollisionCallbacks {
   final double gameSpeed;
-  static const double width = 60.0;
-  static const double height = 40.0;
+  static const double depotWidth = 60.0;
+  static const double depotHeight = 40.0;
   
   final Paint _paint = Paint()..color = Colors.orange;
   final Paint _stripePaint = Paint()..color = Colors.black;
@@ -18,11 +18,11 @@ class FuelDepot extends PositionComponent
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    size = Vector2(width, height);
+    size = Vector2(depotWidth, depotHeight);
     anchor = Anchor.center;
     
     // Add collision detection
-    add(RectangleHitbox(size: Vector2(width, height)));
+    add(RectangleHitbox(size: Vector2(depotWidth, depotHeight)));
   }
 
   @override
@@ -44,16 +44,20 @@ class FuelDepot extends PositionComponent
     
     // Draw fuel depot as rectangle with stripes
     canvas.drawRect(
-      Rect.fromCenter(center: Offset.zero, width: width, height: height),
+      Rect.fromCenter(
+        center: Offset.zero,
+        width: depotWidth,
+        height: depotHeight,
+      ),
       _paint,
     );
     
     // Draw diagonal stripes
     _stripePaint.strokeWidth = 2;
-    for (double i = -width; i < width; i += 10) {
+    for (double i = -depotWidth; i < depotWidth; i += 10) {
       canvas.drawLine(
-        Offset(i, -height / 2),
-        Offset(i + height, height / 2),
+        Offset(i, -depotHeight / 2),
+        Offset(i + depotHeight, depotHeight / 2),
         _stripePaint,
       );
     }

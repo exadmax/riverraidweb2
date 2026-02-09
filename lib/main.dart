@@ -79,6 +79,19 @@ class _GameScreenState extends State<GameScreen> {
                       );
                     },
                   ),
+                  ValueListenableBuilder<int>(
+                    valueListenable: game.topScoreNotifier,
+                    builder: (context, score, child) {
+                      return Text(
+                        'Top: $score',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    },
+                  ),
                   ValueListenableBuilder<double>(
                     valueListenable: game.fuelNotifier,
                     builder: (context, fuel, child) {
@@ -92,14 +105,59 @@ class _GameScreenState extends State<GameScreen> {
                       );
                     },
                   ),
+                  ValueListenableBuilder<int>(
+                    valueListenable: game.livesNotifier,
+                    builder: (context, lives, child) {
+                      return Text(
+                        'Lives: $lives',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
           ),
-          ValueListenableBuilder<bool>(
-            valueListenable: game.gameOverNotifier,
-            builder: (context, isGameOver, child) {
-              if (!isGameOver) return const SizedBox.shrink();
+          ValueListenableBuilder<GamePhase>(
+            valueListenable: game.gamePhaseNotifier,
+            builder: (context, phase, child) {
+              if (phase != GamePhase.start) return const SizedBox.shrink();
+              return Container(
+                color: Colors.black.withOpacity(0.7),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: const [
+                      Text(
+                        'RIVER RAID',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 48,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        'PRESS ENTER/SPACE OR TAP TO START',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          ValueListenableBuilder<GamePhase>(
+            valueListenable: game.gamePhaseNotifier,
+            builder: (context, phase, child) {
+              if (phase != GamePhase.gameOver) return const SizedBox.shrink();
               return Container(
                 color: Colors.black.withOpacity(0.7),
                 child: Center(
@@ -131,9 +189,7 @@ class _GameScreenState extends State<GameScreen> {
                       const SizedBox(height: 40),
                       ElevatedButton(
                         onPressed: () {
-                          setState(() {
-                            game.reset();
-                          });
+                          game.reset();
                         },
                         style: ElevatedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(

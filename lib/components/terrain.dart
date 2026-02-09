@@ -11,7 +11,7 @@ class Terrain extends PositionComponent
   final double gameSpeed;
   final bool isLeft;
   
-  static const double height = 100.0;
+  static const double terrainHeight = 100.0;
   
   late final Paint _paint;
   
@@ -24,7 +24,7 @@ class Terrain extends PositionComponent
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    size = Vector2(width, height);
+    size = Vector2(width, terrainHeight);
     anchor = Anchor.topLeft;
     
     // Different colors for variety
@@ -53,7 +53,7 @@ class Terrain extends PositionComponent
     
     // Draw terrain as rectangle
     canvas.drawRect(
-      Rect.fromLTWH(0, 0, width, height),
+      Rect.fromLTWH(0, 0, width, terrainHeight),
       _paint,
     );
     
@@ -62,7 +62,7 @@ class Terrain extends PositionComponent
       ..color = const Color(0xFF1B5E20)
       ..strokeWidth = 2;
     
-    for (double y = 0; y < height; y += 20) {
+    for (double y = 0; y < terrainHeight; y += 20) {
       canvas.drawLine(
         Offset(0, y),
         Offset(width, y),

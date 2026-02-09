@@ -17,6 +17,15 @@ void main() {
     // Verify HUD elements are present
     expect(find.textContaining('Score:'), findsOneWidget);
     expect(find.textContaining('Fuel:'), findsOneWidget);
+    expect(find.textContaining('Lives:'), findsOneWidget);
+    expect(find.textContaining('Top:'), findsOneWidget);
+  });
+
+  testWidgets('Start screen is visible', (WidgetTester tester) async {
+    await tester.pumpWidget(const RiverRaidApp());
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('PRESS ENTER/SPACE'), findsOneWidget);
   });
 
   testWidgets('Game Over screen can restart', (WidgetTester tester) async {
