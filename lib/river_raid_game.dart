@@ -154,9 +154,15 @@ class RiverRaidGame extends FlameGame
     terrainSpawnTimer = 0;
     
     // Remove all game objects except player
-    children.whereType<Enemy>().toList().forEach((e) => e.removeFromParent());
-    children.whereType<FuelDepot>().toList().forEach((e) => e.removeFromParent());
-    children.whereType<Terrain>().toList().forEach((e) => e.removeFromParent());
+    for (final enemy in children.whereType<Enemy>()) {
+      enemy.removeFromParent();
+    }
+    for (final fuelDepot in children.whereType<FuelDepot>()) {
+      fuelDepot.removeFromParent();
+    }
+    for (final terrain in children.whereType<Terrain>()) {
+      terrain.removeFromParent();
+    }
     
     // Reset player position
     player.position = Vector2(size.x / 2, size.y * 0.8);

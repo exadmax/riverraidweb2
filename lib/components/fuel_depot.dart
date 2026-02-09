@@ -49,11 +49,12 @@ class FuelDepot extends PositionComponent
     );
     
     // Draw diagonal stripes
+    _stripePaint.strokeWidth = 2;
     for (double i = -width; i < width; i += 10) {
       canvas.drawLine(
         Offset(i, -height / 2),
         Offset(i + height, height / 2),
-        _stripePaint..strokeWidth = 2,
+        _stripePaint,
       );
     }
     
