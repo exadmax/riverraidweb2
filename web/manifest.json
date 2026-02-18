@@ -1,7 +1,7 @@
 {
   "name": "River Raid",
   "short_name": "RiverRaid",
-  "start_url": ".",
+  "start_url": "/riverraidweb2/",
   "display": "standalone",
   "background_color": "#1565C0",
   "theme_color": "#1565C0",
